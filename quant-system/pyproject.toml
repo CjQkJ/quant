@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quant-system"
+version = "0.1.0"
+description = "第一阶段多智能体量化交易闭环系统"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "alembic>=1.16.0",
+  "ccxt>=4.5.0",
+  "fastapi>=0.115.0",
+  "pydantic>=2.10.0",
+  "pydantic-settings>=2.5.0",
+  "psycopg[binary]>=3.2.0",
+  "redis>=5.0.0",
+  "sqlalchemy>=2.0.0",
+  "uvicorn>=0.35.0",
+  "websockets>=14.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28.0",
+  "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  ".",
+]
+testpaths = [
+  "tests",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+
+[tool.setuptools.packages.find]
+include = ["apps*", "shared*"]

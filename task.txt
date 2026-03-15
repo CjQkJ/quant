@@ -1,0 +1,29 @@
+你现在是一位任职于顶尖加密货币高频交易（HFT）机构的资深 Python 量化架构师。
+请帮我开发 `crypto-skills-cli` 命令行框架的核心模块。这个框架必须兼容所有主流币种，并且其输出结果将直接用于真金白银的交易决策，因此【准确性】和【抗欺骗性】是最高优先级。
+
+请按顺序严格执行以下任务，遇到环境问题自动修复，完成后向我汇报：
+
+1. 项目与依赖初始化：
+   - 创建 `crypto-skills-cli` 目录并进入。初始化 Git。
+   - 环境，包含：`python>=3.10`（已经安装）, `ccxt`, `pandas`, `numpy`, `typer`, `rich`, `websockets`, `asyncio`。要确保环境各个库之间兼容，使用当前环境就行。
+
+2. 构建核心数据层 (`core/exchange_aggregator.py`)：
+   - 摒弃单一交易所的现货快照。实现一个异步类 `FuturesAggregator`。
+   - 利用 `ccxt.async_support`，同时连接 Binance, Bybit, OKX 三家交易所的【USDT本位永续合约】(USDT-M Perpetual) API。
+   - 编写 `format_symbol(symbol)` 确保动态币种输入（如 "btc", "SOL"）能统一转换为各交易所对应的永续合约格式（如 "BTC/USDT:USDT" 或 "BTCUSDT"）。
+
+3. 开发高精度流动性研判 Skill (`skills/smart_liquidity.py`)：
+   - 实现功能 A【聚合真实深度】：并发拉取三家交易所的 L2 Order Book。实现一个算法，将三个深度合并，并过滤掉异常偏离盘口的极端单（基础反幌骗）。按用户定义的价格区间（如每 50 刀或 100 刀）进行档位聚合。
+   - 实现功能 B【未平仓量与杠杆热度】：拉取该币种全网的 Open Interest (OI) 和 Funding Rate。通过计算 (OI * 标记价格) 评估该币种当前的真实杠杆资金体量。
+
+4. 命令行交互入口 (`main.py`)：
+   - 使用 `typer` 注册子命令 `smart-liquidity`。
+   - 接收参数：`--symbol` (如 BTC), `--threshold` (如 74000), `--bin-size` (区间大小，默认 100)。
+   - 使用 `rich` 库在终端输出分析面板：
+     - 面板1：全网聚合永续合约真实卖盘挂单量（过滤后）Top 3 价格区间。
+     - 面板2：当前合约持仓量 (OI) 状态与多空情绪（通过资金费率推导）。
+     - 明确提示：数据已聚合 Binance, Bybit, OKX。
+
+5. 提交代码：
+   - 编写专业严谨的 `README.md`，注明架构包含多所聚合与永续合约过滤。
+   - 提交 Git，信息为 "feat: implement high-accuracy aggregated liquidity skill for perpetuals"。

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command:*)",
+      "Bash(python -c \"from core.exchange_aggregator import FuturesAggregator, OrderBook, Ticker; print\\(''核心模块加载成功''\\)\")",
+      "Bash(python -c \"from skills.smart_liquidity import SmartLiquiditySkill, LiquidityAnalysis, LiquidityBucket; print\\(''Skill 模块加载成功''\\)\")",
+      "Bash(python main.py --help)",
+      "Bash(python main.py smart-liquidity --symbol BTC --threshold 74000 --bin-size 100)",
+      "Bash(echo \"HTTP_PROXY=$HTTP_PROXY\")",
+      "Bash(echo \"HTTPS_PROXY=$HTTPS_PROXY\")",
+      "Bash(echo \"http_proxy=$http_proxy\")",
+      "Bash(echo \"https_proxy=$https_proxy\")"
+    ]
+  }
+}

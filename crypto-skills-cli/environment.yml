@@ -1,0 +1,15 @@
+name: crypto-skills-cli
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python>=3.10
+  - pip
+  - pip:
+    - ccxt
+    - pandas
+    - numpy
+    - typer
+    - rich
+    - websockets
+    - aiohttp

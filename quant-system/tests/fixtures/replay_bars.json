@@ -1,0 +1,48 @@
+[
+  {
+    "exchange": "binance",
+    "symbol": "BTCUSDT",
+    "timeframe": "5m",
+    "open_time": "2026-03-15T00:00:00+00:00",
+    "close_time": "2026-03-15T00:05:00+00:00",
+    "open": 71000.0,
+    "high": 71120.0,
+    "low": 70980.0,
+    "close": 71080.0,
+    "volume": 120.0,
+    "quote_volume": 8529600.0,
+    "trade_count": 2000,
+    "source": "fixture"
+  },
+  {
+    "exchange": "binance",
+    "symbol": "BTCUSDT",
+    "timeframe": "5m",
+    "open_time": "2026-03-15T00:05:00+00:00",
+    "close_time": "2026-03-15T00:10:00+00:00",
+    "open": 71080.0,
+    "high": 71220.0,
+    "low": 71050.0,
+    "close": 71190.0,
+    "volume": 118.0,
+    "quote_volume": 8400420.0,
+    "trade_count": 2100,
+    "source": "fixture"
+  },
+  {
+    "exchange": "binance",
+    "symbol": "BTCUSDT",
+    "timeframe": "5m",
+    "open_time": "2026-03-15T00:10:00+00:00",
+    "close_time": "2026-03-15T00:15:00+00:00",
+    "open": 71190.0,
+    "high": 71380.0,
+    "low": 71160.0,
+    "close": 71320.0,
+    "volume": 125.0,
+    "quote_volume": 8915000.0,
+    "trade_count": 2200,
+    "source": "fixture"
+  }
+]
+

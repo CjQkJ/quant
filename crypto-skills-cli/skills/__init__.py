@@ -1,0 +1,1 @@
+"""Skills package for crypto-skills-cli."""

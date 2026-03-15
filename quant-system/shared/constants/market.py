@@ -1,0 +1,7 @@
+"""第一阶段固定的市场范围常量。"""
+
+DEFAULT_EXCHANGE = "binance"
+DEFAULT_SYMBOL = "BTCUSDT"
+PRIMARY_TIMEFRAME = "5m"
+AUX_TIMEFRAME = "15m"
+
