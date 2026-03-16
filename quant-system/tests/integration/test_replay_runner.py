@@ -15,6 +15,8 @@ def test_replay_runner(session):
     seed_market_data(session, mode="trend")
     bars = json.loads(Path("tests/fixtures/replay_bars.json").read_text(encoding="utf-8"))
     runner = ReplayRunner(OrchestratorService(state_store=InMemoryStateStore()))
-    results = runner.run(session, bars=bars, symbol="BTCUSDT", timeframe="5m")
-    assert len(results) == len(bars)
-    assert all("analysis" in item for item in results)
+    summary = runner.run(session, bars=bars, symbol="BTCUSDT", timeframe="5m")
+    assert summary.cycle_count == len(bars)
+    assert len(summary.cycle_results) == len(bars)
+    assert summary.analysis_version
+    assert summary.risk_policy_version

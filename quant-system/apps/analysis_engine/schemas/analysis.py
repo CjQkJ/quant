@@ -16,6 +16,7 @@ class KeyFactor(BaseSchema):
 class AnalysisAgentOutput(BaseSchema):
     task_id: str
     analysis_id: str
+    analysis_version: str
     exchange: str
     symbol: str
     timeframe: str
@@ -30,4 +31,3 @@ class AnalysisAgentOutput(BaseSchema):
     preferred_strategy_types: list[str]
     rejected_strategy_types: list[str]
     summary: str
-

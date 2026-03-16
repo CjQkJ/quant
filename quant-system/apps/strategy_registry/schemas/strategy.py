@@ -38,11 +38,15 @@ class StrategySelectionOutput(BaseSchema):
     analysis_id: str
     selection_id: str
     selection_time: str
+    ranking_version: str
     selected_strategy_id: str
     selected_strategy_name: str
+    selected_strategy_type: str
     fit_score: float
     candidate_strategies: list[RankedCandidate]
     fallback_strategy_id: str | None = None
     selection_reason: str
     constraints_checked: list[str]
-
+    switch_attempted: bool = False
+    cooldown_applied: bool = False
+    selection_policy_note: str = "normal"

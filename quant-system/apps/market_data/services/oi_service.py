@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from apps.market_data.schemas.market import DerivativesMetricPayload
@@ -28,15 +29,27 @@ class OIService:
         )
 
     def save(self, session: Session, payload: DerivativesMetricPayload) -> MarketDerivativesMetric:
-        row = MarketDerivativesMetric(
-            exchange=payload.exchange,
-            symbol=payload.symbol,
-            metric_time=payload.metric_time,
-            metric_type=payload.metric_type,
-            metric_value=Decimal(str(payload.metric_value)),
-            extra_json=payload.extra_json,
-            source=payload.source,
+        stmt = select(MarketDerivativesMetric).where(
+            MarketDerivativesMetric.exchange == payload.exchange,
+            MarketDerivativesMetric.symbol == payload.symbol,
+            MarketDerivativesMetric.metric_time == payload.metric_time,
+            MarketDerivativesMetric.metric_type == payload.metric_type,
         )
-        session.add(row)
+        row = session.scalar(stmt)
+        if row is None:
+            row = MarketDerivativesMetric(
+                exchange=payload.exchange,
+                symbol=payload.symbol,
+                metric_time=payload.metric_time,
+                metric_type=payload.metric_type,
+                metric_value=Decimal(str(payload.metric_value)),
+                extra_json=payload.extra_json,
+                source=payload.source,
+            )
+            session.add(row)
+        else:
+            row.metric_value = Decimal(str(payload.metric_value))
+            row.extra_json = payload.extra_json
+            row.source = payload.source
         session.flush()
         return row

@@ -16,6 +16,7 @@
 市场数据
   -> 分析
   -> 选策略
+  -> 策略运行信号
   -> 审核
   -> 模拟执行
   -> 监控
@@ -44,21 +45,23 @@ Binance 数据 / 演示数据
 
 ## 最重要的文件怎么对应
 
-- [apps/agent_orchestrator/main.py](E:/quant/quant-system/apps/agent_orchestrator/main.py)
+- [apps/agent_orchestrator/main.py](../../apps/agent_orchestrator/main.py)
   这是总入口。现在系统能不能跑通，主要看这里。
-- [apps/analysis_engine/services/signal_summary_service.py](E:/quant/quant-system/apps/analysis_engine/services/signal_summary_service.py)
+- [apps/analysis_engine/services/signal_summary_service.py](../../apps/analysis_engine/services/signal_summary_service.py)
   这里负责把市场数据整理成“分析结果”。
-- [apps/strategy_registry/services/registry_service.py](E:/quant/quant-system/apps/strategy_registry/services/registry_service.py)
+- [apps/strategy_registry/services/registry_service.py](../../apps/strategy_registry/services/registry_service.py)
   这里定义并写入当前的 4 个预置策略。
-- [apps/risk_engine/services/audit_service.py](E:/quant/quant-system/apps/risk_engine/services/audit_service.py)
+- [apps/strategy_runtime/services/runtime_service.py](../../apps/strategy_runtime/services/runtime_service.py)
+  这里让被选中的策略真正输出 `entry / reduce / exit / hold / no_trade`。
+- [apps/risk_engine/services/audit_service.py](../../apps/risk_engine/services/audit_service.py)
   这里决定本轮是 `approve`、`reject`、`downgrade` 还是 `observe_only`。
-- [apps/execution_engine/services/order_executor.py](E:/quant/quant-system/apps/execution_engine/services/order_executor.py)
+- [apps/execution_engine/services/order_executor.py](../../apps/execution_engine/services/order_executor.py)
   这里做模拟成交，不会真实下单。
-- [shared/models/tables.py](E:/quant/quant-system/shared/models/tables.py)
-  这里是 10 张核心表。
-- [scripts/demo_cycle.py](E:/quant/quant-system/scripts/demo_cycle.py)
+- [shared/models/tables.py](../../shared/models/tables.py)
+  这里是第一阶段核心表和第二阶段新增的 replay / signal / snapshot 表。
+- [scripts/demo_cycle.py](../../scripts/demo_cycle.py)
   这是最适合看“项目现在会做什么”的演示脚本。
-- [scripts/replay_events.py](E:/quant/quant-system/scripts/replay_events.py)
+- [scripts/replay_events.py](../../scripts/replay_events.py)
   这是最适合看“这套流程能不能反复跑”的回放脚本。
 
 ## 你现在最应该怎么体验
@@ -125,7 +128,7 @@ python scripts/demo_cycle.py --mode low_confidence
 python scripts/replay_events.py
 ```
 
-这一步说明系统不只是能跑一次，还能按历史 bar 连续跑多轮。
+这一步说明系统不只是能跑一次，还能按历史 bar 连续跑多轮，并输出策略切换、冷却命中和执行结果统计。
 
 ### 5. 看风控拦截
 
@@ -146,11 +149,12 @@ python scripts/demo_cycle.py --kill-switch-on
 - 能写入 4 个默认策略
 - 能输出结构化分析结果
 - 能完成结构化策略选择
+- 能输出结构化策略运行信号
 - 能完成结构化审核
 - 能做 paper trading 模拟执行
 - 能记录任务事件日志
 - 能在监控阶段检查 kill switch
-- 能做基础回放
+- 能做带版本号和统计的基础回放
 - 能通过单元测试和集成测试
 
 ## 当前还没完成的东西

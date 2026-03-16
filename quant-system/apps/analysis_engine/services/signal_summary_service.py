@@ -10,12 +10,15 @@ from apps.analysis_engine.schemas.analysis import AnalysisAgentOutput, KeyFactor
 from apps.analysis_engine.services.directional_bias_service import DirectionalBiasService
 from apps.analysis_engine.services.market_regime_service import MarketRegimeService
 from apps.market_data.services.regime_feature_service import RegimeFeatureService
+from shared.constants.versions import ANALYSIS_VERSION
 from shared.models.tables import AnalysisReport
 from shared.utils.ids import new_analysis_id
 from shared.utils.time import utc_now
 
 
 class SignalSummaryService:
+    version = ANALYSIS_VERSION
+
     def __init__(self) -> None:
         self.feature_service = RegimeFeatureService()
         self.regime_service = MarketRegimeService()
@@ -57,6 +60,7 @@ class SignalSummaryService:
         output = AnalysisAgentOutput(
             task_id=task_id,
             analysis_id=new_analysis_id(),
+            analysis_version=self.version,
             exchange=snapshot.exchange,
             symbol=snapshot.symbol,
             timeframe=snapshot.timeframe,
@@ -81,6 +85,7 @@ class SignalSummaryService:
         row = AnalysisReport(
             analysis_id=output.analysis_id,
             task_id=output.task_id,
+            analysis_version=output.analysis_version,
             exchange=output.exchange,
             symbol=output.symbol,
             timeframe=output.timeframe,
@@ -98,4 +103,3 @@ class SignalSummaryService:
         session.add(row)
         session.flush()
         return output
-

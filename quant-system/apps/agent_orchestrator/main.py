@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from apps.agent_orchestrator.api.dependencies import require_internal_access
 from apps.agent_orchestrator.agents.analyst_agent import AnalystAgent
 from apps.agent_orchestrator.agents.auditor_agent import AuditorAgent
 from apps.agent_orchestrator.agents.executor_agent import ExecutorAgent
 from apps.agent_orchestrator.agents.monitor_agent import MonitorAgent
 from apps.agent_orchestrator.agents.selector_agent import SelectorAgent
+from apps.agent_orchestrator.routers.execution import router as execution_router
+from apps.agent_orchestrator.routers.market_data import router as market_data_router
+from apps.agent_orchestrator.routers.monitor import router as monitor_router
+from apps.agent_orchestrator.routers.replay import router as replay_router
+from apps.agent_orchestrator.routers.risk import router as risk_router
+from apps.agent_orchestrator.routers.tools import router as tools_router
 from apps.agent_orchestrator.schemas.orchestration import CycleResultOutput
 from apps.agent_orchestrator.workflows.decision_to_execution import DecisionToExecutionWorkflow
 from apps.agent_orchestrator.workflows.market_to_decision import MarketToDecisionWorkflow
@@ -23,6 +30,7 @@ from apps.risk_engine.services.global_risk_service import GlobalRiskService
 from apps.risk_engine.services.kill_switch_service import KillSwitchService
 from apps.risk_engine.services.monitor_service import MonitorService
 from apps.risk_engine.services.strategy_applicability_service import StrategyApplicabilityService
+from apps.strategy_runtime.services.runtime_service import StrategyRuntimeService
 from shared.config.settings import get_settings
 from shared.db.session import session_scope
 from shared.models.tables import MarketOrderBookSnapshot, TaskEventLog
@@ -35,7 +43,7 @@ def build_state_store():
     if settings.redis_url.startswith("redis://"):
         try:
             return RedisStateStore(settings.redis_url)
-        except RuntimeError:
+        except Exception:
             return InMemoryStateStore()
     return InMemoryStateStore()
 
@@ -53,6 +61,7 @@ class OrchestratorService:
             exposure_service=self.exposure_service,
             applicability_service=StrategyApplicabilityService(),
         )
+        self.strategy_runtime_service = StrategyRuntimeService(self.account_state_service)
         self.monitor_service = MonitorService(
             kill_switch_service=self.kill_switch_service,
             global_risk_service=self.global_risk_service,
@@ -60,8 +69,9 @@ class OrchestratorService:
         )
         self.market_to_decision = MarketToDecisionWorkflow(
             analyst_agent=AnalystAgent(),
-            selector_agent=SelectorAgent(),
+            selector_agent=SelectorAgent(self.state_store),
             auditor_agent=AuditorAgent(self.audit_service),
+            strategy_runtime_service=self.strategy_runtime_service,
         )
         self.decision_to_execution = DecisionToExecutionWorkflow(
             executor_agent=ExecutorAgent(
@@ -96,9 +106,10 @@ class OrchestratorService:
     def run_cycle(self, session: Session, symbol: str, timeframe: str = "5m") -> CycleResultOutput:
         task_id = new_task_id()
         self._log_event(session, task_id, "market_trigger", "system", {"symbol": symbol, "timeframe": timeframe}, "市场触发")
-        analysis, selection, audit = self.market_to_decision.run(session, task_id=task_id, symbol=symbol, timeframe=timeframe)
+        analysis, selection, strategy_signal, audit = self.market_to_decision.run(session, task_id=task_id, symbol=symbol, timeframe=timeframe)
         self._log_event(session, task_id, "analysis_done", "analyst_agent", analysis.model_dump(mode="json"), "分析完成")
         self._log_event(session, task_id, "strategy_selected", "selector_agent", selection.model_dump(mode="json"), "策略选择完成")
+        self._log_event(session, task_id, "strategy_signal_done", "strategy_runtime", strategy_signal.model_dump(mode="json"), "策略信号生成完成")
         self._log_event(session, task_id, "audit_done", "auditor_agent", audit.model_dump(mode="json"), "审核完成")
 
         orderbook = session.scalar(
@@ -109,23 +120,35 @@ class OrchestratorService:
         )
         if orderbook is None:
             raise ValueError("缺少订单簿快照，无法执行 orchestrator")
-        execution = self.decision_to_execution.run(session, analysis=analysis, audit=audit, orderbook=orderbook)
+        execution = self.decision_to_execution.run(session, analysis=analysis, audit=audit, strategy_signal=strategy_signal, orderbook=orderbook)
         self._log_event(session, task_id, "execution_done", "executor_agent", execution.model_dump(mode="json"), "执行阶段完成")
 
         monitor = self.monitor_agent.run(session, symbol=symbol)
         self._log_event(session, task_id, "monitor_done", "monitor_agent", monitor.model_dump(mode="json"), "监控阶段完成")
         return CycleResultOutput(
             task_id=task_id,
+            analysis_version=analysis.analysis_version,
+            ranking_version=selection.ranking_version,
+            risk_policy_version=audit.risk_policy_version,
+            strategy_runtime_version=strategy_signal.strategy_runtime_version,
             analysis=analysis,
             selection=selection,
+            strategy_signal=strategy_signal,
             audit=audit,
             execution=execution,
             monitor=monitor,
+            account_snapshot=execution.account_snapshot,
         )
 
 
 app = FastAPI(title="quant-system orchestrator")
 orchestrator = OrchestratorService()
+app.include_router(market_data_router)
+app.include_router(risk_router)
+app.include_router(execution_router)
+app.include_router(replay_router)
+app.include_router(monitor_router)
+app.include_router(tools_router)
 
 
 @app.get("/health")
@@ -133,7 +156,7 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@app.post("/orchestrator/run-cycle")
+@app.post("/orchestrator/run-cycle", dependencies=[Depends(require_internal_access)])
 def run_cycle(symbol: str = "BTCUSDT", timeframe: str = "5m") -> dict:
     with session_scope() as session:
         result = orchestrator.run_cycle(session, symbol=symbol, timeframe=timeframe)
@@ -141,13 +164,12 @@ def run_cycle(symbol: str = "BTCUSDT", timeframe: str = "5m") -> dict:
         return result.model_dump(mode="json")
 
 
-@app.get("/risk/kill-switch")
+@app.get("/risk/kill-switch", dependencies=[Depends(require_internal_access)])
 def get_kill_switch() -> dict:
     return {"kill_switch": orchestrator.kill_switch_service.is_enabled()}
 
 
-@app.post("/risk/kill-switch/{enabled}")
+@app.post("/risk/kill-switch/{enabled}", dependencies=[Depends(require_internal_access)])
 def set_kill_switch(enabled: bool) -> dict:
     orchestrator.kill_switch_service.set_enabled(enabled)
     return {"kill_switch": orchestrator.kill_switch_service.is_enabled()}
-

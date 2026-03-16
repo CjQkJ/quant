@@ -14,10 +14,15 @@ def test_orchestrator_approve_flow(session):
     seed_market_data(session, mode="trend")
     orchestrator = OrchestratorService(state_store=InMemoryStateStore())
     result = orchestrator.run_cycle(session, symbol="BTCUSDT", timeframe="5m")
+    assert result.analysis_version
+    assert result.ranking_version
+    assert result.risk_policy_version
+    assert result.strategy_runtime_version
+    assert result.strategy_signal.action in {"entry", "reduce", "exit", "hold", "no_trade"}
     assert result.audit.decision in {"approve", "downgrade"}
     assert result.execution.execution_status in {"filled", "skipped"}
     events = session.scalars(select(TaskEventLog)).all()
-    assert len(events) >= 5
+    assert len(events) >= 6
 
 
 def test_orchestrator_reject_flow(session):

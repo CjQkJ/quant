@@ -3,9 +3,10 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .venv/
+.runtime/
+quant_system.egg-info/
 *.pyc
 *.pyo
 *.pyd
 *.db
 .env
-

@@ -109,6 +109,7 @@ class AnalysisReport(Base, CreatedAtMixin):
     id: Mapped[int] = mapped_column(PrimaryKeyInt, primary_key=True, autoincrement=True)
     analysis_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     task_id: Mapped[str] = mapped_column(String(64), index=True)
+    analysis_version: Mapped[str] = mapped_column(String(32), default="analysis.v1")
     exchange: Mapped[str] = mapped_column(String(32))
     symbol: Mapped[str] = mapped_column(String(32))
     timeframe: Mapped[str] = mapped_column(String(16))
@@ -131,11 +132,17 @@ class StrategySelection(Base, CreatedAtMixin):
     selection_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     task_id: Mapped[str] = mapped_column(String(64), index=True)
     analysis_id: Mapped[str] = mapped_column(String(64), index=True)
+    ranking_version: Mapped[str] = mapped_column(String(32), default="ranking.v1")
     selected_strategy_id: Mapped[str] = mapped_column(String(64))
+    selected_strategy_name: Mapped[str] = mapped_column(String(128))
+    selected_strategy_type: Mapped[str] = mapped_column(String(64))
     candidate_strategies: Mapped[list[dict[str, Any]]] = mapped_column(JsonDocument)
     selection_reason: Mapped[str] = mapped_column(Text)
     fit_score: Mapped[Decimal] = mapped_column(Numeric(6, 4))
     fallback_strategy_id: Mapped[str | None] = mapped_column(String(64))
+    switch_attempted: Mapped[bool] = mapped_column(Boolean, default=False)
+    cooldown_applied: Mapped[bool] = mapped_column(Boolean, default=False)
+    selection_policy_note: Mapped[str] = mapped_column(String(64), default="normal")
     raw_payload: Mapped[dict[str, Any]] = mapped_column(JsonDocument)
     created_by_agent: Mapped[str] = mapped_column(String(64))
 
@@ -148,6 +155,8 @@ class AuditDecision(Base, CreatedAtMixin):
     task_id: Mapped[str] = mapped_column(String(64), index=True)
     analysis_id: Mapped[str] = mapped_column(String(64), index=True)
     selection_id: Mapped[str] = mapped_column(String(64), index=True)
+    strategy_signal_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    risk_policy_version: Mapped[str] = mapped_column(String(32), default="risk-policy.v1")
     approved: Mapped[bool] = mapped_column(Boolean)
     decision: Mapped[str] = mapped_column(String(32))
     risk_level: Mapped[str] = mapped_column(String(16))
@@ -166,8 +175,11 @@ class ExecutionOrder(Base, CreatedUpdatedMixin):
     exec_order_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     task_id: Mapped[str] = mapped_column(String(64), index=True)
     audit_id: Mapped[str] = mapped_column(String(64), index=True)
+    strategy_signal_id: Mapped[str | None] = mapped_column(String(64), index=True)
     exchange: Mapped[str] = mapped_column(String(32))
     symbol: Mapped[str] = mapped_column(String(32))
+    market_type: Mapped[str] = mapped_column(String(16), default="futures")
+    account_mode: Mapped[str] = mapped_column(String(16), default="paper")
     side: Mapped[str] = mapped_column(String(16))
     position_side: Mapped[str] = mapped_column(String(16))
     order_type: Mapped[str] = mapped_column(String(16))
@@ -181,6 +193,8 @@ class ExecutionOrder(Base, CreatedUpdatedMixin):
     filled_qty: Mapped[Decimal] = mapped_column(Numeric(24, 8), default=0)
     fee: Mapped[Decimal] = mapped_column(Numeric(24, 8), default=0)
     estimated_slippage_bps: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=0)
+    realized_pnl: Mapped[Decimal] = mapped_column(Numeric(24, 8), default=0)
+    unrealized_pnl_at_fill: Mapped[Decimal] = mapped_column(Numeric(24, 8), default=0)
     error_message: Mapped[str | None] = mapped_column(Text)
     placed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     filled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -196,3 +210,100 @@ class TaskEventLog(Base, CreatedAtMixin):
     event_payload: Mapped[dict[str, Any]] = mapped_column(JsonDocument)
     message: Mapped[str] = mapped_column(Text)
     level: Mapped[str] = mapped_column(String(16), default="info")
+
+
+class StrategySignalRecord(Base, CreatedAtMixin):
+    __tablename__ = "strategy_signal"
+    __table_args__ = (UniqueConstraint("signal_id"),)
+
+    id: Mapped[int] = mapped_column(PrimaryKeyInt, primary_key=True, autoincrement=True)
+    signal_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    task_id: Mapped[str] = mapped_column(String(64), index=True)
+    analysis_id: Mapped[str] = mapped_column(String(64), index=True)
+    selection_id: Mapped[str] = mapped_column(String(64), index=True)
+    strategy_id: Mapped[str] = mapped_column(String(64), index=True)
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    timeframe: Mapped[str] = mapped_column(String(16))
+    market_type: Mapped[str] = mapped_column(String(16), default="futures")
+    action: Mapped[str] = mapped_column(String(16))
+    direction: Mapped[str] = mapped_column(String(16))
+    strength: Mapped[Decimal] = mapped_column(Numeric(8, 4))
+    target_position_ratio: Mapped[Decimal] = mapped_column(Numeric(8, 4))
+    reason: Mapped[str] = mapped_column(Text)
+    risk_tags: Mapped[list[str]] = mapped_column(JsonDocument)
+    strategy_runtime_version: Mapped[str] = mapped_column(String(32))
+    raw_payload: Mapped[dict[str, Any]] = mapped_column(JsonDocument)
+
+
+class PaperAccountSnapshot(Base, CreatedAtMixin):
+    __tablename__ = "paper_account_snapshot"
+
+    id: Mapped[int] = mapped_column(PrimaryKeyInt, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    task_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    symbol: Mapped[str | None] = mapped_column(String(32), index=True)
+    market_type: Mapped[str] = mapped_column(String(16), default="futures")
+    account_mode: Mapped[str] = mapped_column(String(16), default="paper")
+    equity: Mapped[Decimal] = mapped_column(Numeric(24, 8))
+    cash_balance: Mapped[Decimal] = mapped_column(Numeric(24, 8))
+    available_balance: Mapped[Decimal] = mapped_column(Numeric(24, 8))
+    used_margin: Mapped[Decimal] = mapped_column(Numeric(24, 8))
+    realized_pnl: Mapped[Decimal] = mapped_column(Numeric(24, 8), default=0)
+    unrealized_pnl: Mapped[Decimal] = mapped_column(Numeric(24, 8), default=0)
+    avg_slippage_bps: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=0)
+    positions_json: Mapped[list[dict[str, Any]]] = mapped_column(JsonDocument)
+    raw_payload: Mapped[dict[str, Any]] = mapped_column(JsonDocument)
+
+
+class MonitorSnapshot(Base, CreatedAtMixin):
+    __tablename__ = "monitor_snapshot"
+
+    id: Mapped[int] = mapped_column(PrimaryKeyInt, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    task_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    risk_policy_version: Mapped[str] = mapped_column(String(32))
+    system_status: Mapped[str] = mapped_column(String(16))
+    account_status_json: Mapped[dict[str, Any]] = mapped_column(JsonDocument)
+    risk_metrics_json: Mapped[dict[str, Any]] = mapped_column(JsonDocument)
+    alerts_json: Mapped[list[dict[str, Any]]] = mapped_column(JsonDocument)
+    actions_json: Mapped[list[dict[str, Any]]] = mapped_column(JsonDocument)
+    kill_switch: Mapped[bool] = mapped_column(Boolean, default=False)
+    raw_payload: Mapped[dict[str, Any]] = mapped_column(JsonDocument)
+
+
+class ReplayRun(Base, CreatedAtMixin):
+    __tablename__ = "replay_run"
+
+    id: Mapped[int] = mapped_column(PrimaryKeyInt, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    timeframe: Mapped[str] = mapped_column(String(16))
+    fixture_name: Mapped[str] = mapped_column(String(128))
+    analysis_version: Mapped[str] = mapped_column(String(32))
+    ranking_version: Mapped[str] = mapped_column(String(32))
+    risk_policy_version: Mapped[str] = mapped_column(String(32))
+    strategy_runtime_version: Mapped[str] = mapped_column(String(32))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    summary_json: Mapped[dict[str, Any] | None] = mapped_column(JsonDocument)
+
+
+class ReplayCycleResult(Base, CreatedAtMixin):
+    __tablename__ = "replay_cycle_result"
+
+    id: Mapped[int] = mapped_column(PrimaryKeyInt, primary_key=True, autoincrement=True)
+    cycle_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    run_id: Mapped[str] = mapped_column(String(64), index=True)
+    task_id: Mapped[str] = mapped_column(String(64), index=True)
+    cycle_index: Mapped[int] = mapped_column(Integer, index=True)
+    bar_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    selected_strategy_id: Mapped[str] = mapped_column(String(64))
+    strategy_signal_action: Mapped[str] = mapped_column(String(16))
+    strategy_signal_direction: Mapped[str] = mapped_column(String(16))
+    audit_decision: Mapped[str] = mapped_column(String(32))
+    execution_status: Mapped[str] = mapped_column(String(32))
+    switch_attempted: Mapped[bool] = mapped_column(Boolean, default=False)
+    cooldown_applied: Mapped[bool] = mapped_column(Boolean, default=False)
+    account_snapshot_json: Mapped[dict[str, Any]] = mapped_column(JsonDocument)
+    raw_payload: Mapped[dict[str, Any]] = mapped_column(JsonDocument)

@@ -56,3 +56,21 @@ class SystemStatus(StringEnum):
     WARNING = "warning"
     CRITICAL = "critical"
     HALTED = "halted"
+
+
+class MarketType(StringEnum):
+    SPOT = "spot"
+    FUTURES = "futures"
+
+
+class AccountMode(StringEnum):
+    PAPER = "paper"
+    LIVE = "live"
+
+
+class SignalAction(StringEnum):
+    ENTRY = "entry"
+    EXIT = "exit"
+    HOLD = "hold"
+    REDUCE = "reduce"
+    NO_TRADE = "no_trade"

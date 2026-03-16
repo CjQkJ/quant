@@ -15,10 +15,10 @@ def configure_demo_env() -> None:
     """为回放脚本准备独立演示环境。"""
 
     if "DATABASE_URL" not in os.environ:
-        demo_db = Path("replay_demo.db")
+        demo_db = Path(".runtime/replay_demo.db")
         if demo_db.exists():
             demo_db.unlink()
-        os.environ["DATABASE_URL"] = "sqlite+pysqlite:///./replay_demo.db"
+        os.environ["DATABASE_URL"] = "sqlite+pysqlite:///./.runtime/replay_demo.db"
     os.environ.setdefault("REDIS_URL", "memory://")
 
 
@@ -35,5 +35,10 @@ if __name__ == "__main__":
         RegistryService().seed_default_strategies(session)
         seed_market_data(session, mode="trend")
         session.commit()
-        results = runner.run(session, bars=bars, symbol="BTCUSDT", timeframe="5m")
-    print(f"回放完成，共 {len(results)} 个 bar")
+        summary = runner.run(session, bars=bars, symbol="BTCUSDT", timeframe="5m")
+        session.commit()
+    print(f"回放完成，共 {summary.cycle_count} 个 bar")
+    print(f"版本: {summary.analysis_version} / {summary.ranking_version} / {summary.risk_policy_version} / {summary.strategy_runtime_version}")
+    print(f"策略切换次数: {summary.strategy_switch_count}")
+    print(f"冷却阻止次数: {summary.cooldown_block_count}")
+    print(f"执行成功率: {summary.execution_success_ratio:.2%}")

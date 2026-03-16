@@ -1,0 +1,19 @@
+{
+  "version": "risk-policy.v2",
+  "drawdown_limit": 0.08,
+  "exposure_limit": 0.30,
+  "observe_confidence_lt": 0.40,
+  "downgrade_confidence_lt": 0.60,
+  "high_volatility_levels": [
+    "high"
+  ],
+  "low_liquidity_levels": [
+    "low"
+  ],
+  "event_risk_blocklist": [
+    "stale_market_data"
+  ],
+  "default_max_position_ratio": 0.10,
+  "downgraded_max_position_ratio": 0.05,
+  "strategy_switch_cooldown_seconds": 900
+}

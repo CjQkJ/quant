@@ -5,9 +5,12 @@ from __future__ import annotations
 from apps.analysis_engine.schemas.analysis import AnalysisAgentOutput
 from apps.strategy_registry.schemas.strategy import RankedCandidate
 from shared.models.tables import StrategyMetadata
+from shared.constants.versions import RANKING_VERSION
 
 
 class RankingService:
+    version = RANKING_VERSION
+
     def rank(
         self,
         strategies: list[StrategyMetadata],
@@ -38,4 +41,3 @@ class RankingService:
                 )
             )
         return sorted(candidates, key=lambda item: item.fit_score, reverse=True)
-

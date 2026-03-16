@@ -32,3 +32,19 @@ def new_audit_id() -> str:
 
 def new_execution_id() -> str:
     return build_id("exec")
+
+
+def new_signal_id() -> str:
+    return build_id("signal")
+
+
+def new_snapshot_id(prefix: str) -> str:
+    return build_id(prefix)
+
+
+def new_replay_run_id() -> str:
+    return build_id("replay_run")
+
+
+def new_replay_cycle_id() -> str:
+    return build_id("replay_cycle")

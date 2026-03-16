@@ -8,7 +8,12 @@ from shared.models.tables import (
     MarketOHLCV,
     MarketOrderBookSnapshot,
     MarketTradeTick,
+    MonitorSnapshot,
+    PaperAccountSnapshot,
+    ReplayCycleResult,
+    ReplayRun,
     StrategyMetadata,
+    StrategySignalRecord,
     StrategySelection,
     TaskEventLog,
 )
@@ -21,8 +26,12 @@ __all__ = [
     "MarketOHLCV",
     "MarketOrderBookSnapshot",
     "MarketTradeTick",
+    "MonitorSnapshot",
+    "PaperAccountSnapshot",
+    "ReplayCycleResult",
+    "ReplayRun",
     "StrategyMetadata",
+    "StrategySignalRecord",
     "StrategySelection",
     "TaskEventLog",
 ]
-

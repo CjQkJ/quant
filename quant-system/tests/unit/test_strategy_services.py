@@ -6,12 +6,14 @@ from apps.analysis_engine.schemas.analysis import AnalysisAgentOutput, KeyFactor
 from apps.strategy_registry.services.ranking_service import RankingService
 from apps.strategy_registry.services.registry_service import RegistryService
 from apps.strategy_registry.services.strategy_matcher import StrategyMatcher
+from shared.constants.versions import ANALYSIS_VERSION
 
 
 def build_analysis(regime: str = "range", bias: str = "neutral_to_short", confidence: float = 0.72) -> AnalysisAgentOutput:
     return AnalysisAgentOutput(
         task_id="task_x",
         analysis_id="analysis_x",
+        analysis_version=ANALYSIS_VERSION,
         exchange="binance",
         symbol="BTCUSDT",
         timeframe="5m",

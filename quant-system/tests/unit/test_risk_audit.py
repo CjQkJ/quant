@@ -7,6 +7,8 @@ from apps.risk_engine.services.exposure_service import ExposureService
 from apps.risk_engine.services.global_risk_service import GlobalRiskService
 from apps.risk_engine.services.kill_switch_service import KillSwitchService
 from apps.risk_engine.services.strategy_applicability_service import StrategyApplicabilityService
+from apps.strategy_runtime.services.runtime_service import StrategyRuntimeService
+from apps.execution_engine.services.account_state_service import AccountStateService
 from tests.helpers import seed_market_data
 
 
@@ -17,6 +19,7 @@ def test_kill_switch_forces_reject(session, state_store):
     seed_market_data(session, mode="trend")
     analysis = SignalSummaryService().analyze(session, task_id="task_x", symbol="BTCUSDT")
     selection = SelectorAgent().run(session, analysis)
+    strategy_signal = StrategyRuntimeService(AccountStateService(state_store)).get_strategy_signal(session, analysis, selection)
     kill_switch = KillSwitchService(state_store)
     kill_switch.set_enabled(True)
     audit = AuditService(
@@ -24,5 +27,5 @@ def test_kill_switch_forces_reject(session, state_store):
         global_risk_service=GlobalRiskService(state_store),
         exposure_service=ExposureService(GlobalRiskService(state_store)),
         applicability_service=StrategyApplicabilityService(),
-    ).audit(session, analysis, selection)
+    ).audit(session, analysis, selection, strategy_signal)
     assert audit.decision == "reject"

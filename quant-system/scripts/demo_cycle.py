@@ -29,8 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--database-url",
-        default="sqlite+pysqlite:///./demo_cycle.db",
-        help="演示用数据库连接，默认写到当前目录 demo_cycle.db",
+        default="sqlite+pysqlite:///./.runtime/demo_cycle.db",
+        help="演示用数据库连接，默认写到 .runtime/demo_cycle.db",
     )
     parser.add_argument(
         "--redis-url",
@@ -84,16 +84,24 @@ def print_text_summary(
     print(f"- 方向偏向: {result.analysis.directional_bias}")
     print(f"- 置信度: {result.analysis.confidence:.2f}")
     print(f"- 流动性等级: {result.analysis.liquidity_level}")
+    print(f"- 分析版本: {result.analysis_version}")
     print("")
     print("策略与审核")
     print(f"- 选中策略: {result.selection.selected_strategy_name}")
     print(f"- 选中原因: {result.selection.selection_reason}")
+    print(f"- 排序版本: {result.ranking_version}")
+    print(f"- 策略信号: {result.strategy_signal.action} / {result.strategy_signal.direction}")
+    print(f"- 策略运行版本: {result.strategy_runtime_version}")
     print(f"- 审核结论: {result.audit.decision}")
     print(f"- 审核摘要: {result.audit.audit_summary}")
+    print(f"- 风控版本: {result.risk_policy_version}")
     print("")
     print("执行与监控")
     print(f"- 执行状态: {result.execution.execution_status}")
     print(f"- 执行摘要: {result.execution.execution_summary}")
+    print(f"- 账户权益: {result.account_snapshot.equity:.2f}")
+    print(f"- 已实现盈亏: {result.account_snapshot.realized_pnl:.2f}")
+    print(f"- 未实现盈亏: {result.account_snapshot.unrealized_pnl:.2f}")
     print(f"- 系统状态: {result.monitor.system_status}")
     print(f"- Kill Switch: {result.monitor.kill_switch}")
     print("")

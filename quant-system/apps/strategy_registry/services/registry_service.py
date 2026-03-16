@@ -122,3 +122,6 @@ class RegistryService:
         )
         return list(session.scalars(stmt).all())
 
+    def get_by_strategy_id(self, session: Session, strategy_id: str) -> StrategyMetadata | None:
+        stmt = select(StrategyMetadata).where(StrategyMetadata.strategy_id == strategy_id)
+        return session.scalar(stmt)

@@ -49,6 +49,7 @@ class RedisStateStore:
             raise RuntimeError("未安装 redis 依赖，无法使用 RedisStateStore") from exc
 
         self._client = redis.Redis.from_url(redis_url, decode_responses=True)
+        self._client.ping()
 
     def get_json(self, key: str, default: Any = None) -> Any:
         value = self._client.get(key)
@@ -67,4 +68,3 @@ class RedisStateStore:
 
     def set_bool(self, key: str, value: bool) -> None:
         self._client.set(key, "1" if value else "0")
-

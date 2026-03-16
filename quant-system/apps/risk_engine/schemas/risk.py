@@ -26,8 +26,10 @@ class AuditDecisionOutput(BaseSchema):
     task_id: str
     analysis_id: str
     selection_id: str
+    strategy_signal_id: str | None = None
     audit_id: str
     audit_time: datetime
+    risk_policy_version: str
     decision: str
     approved: bool
     risk_level: str
@@ -41,8 +43,11 @@ class AuditDecisionOutput(BaseSchema):
 
 class AccountStatus(BaseSchema):
     equity: float
+    cash_balance: float
     available_balance: float
     used_margin_ratio: float
+    realized_pnl: float
+    unrealized_pnl: float
 
 
 class RiskMetrics(BaseSchema):
@@ -50,6 +55,8 @@ class RiskMetrics(BaseSchema):
     daily_drawdown_ratio: float
     consecutive_loss_count: int
     avg_slippage_bps: float
+    execution_latency_ms: float
+    margin_usage_ratio: float
 
 
 class MonitorAlert(BaseSchema):
@@ -64,11 +71,13 @@ class MonitorAction(BaseSchema):
 
 
 class MonitorStatusOutput(BaseSchema):
+    snapshot_id: str
     monitor_time: datetime
+    symbol: str
+    risk_policy_version: str
     system_status: str
     account_status: AccountStatus
     risk_metrics: RiskMetrics
     alerts: list[MonitorAlert]
     actions: list[MonitorAction]
     kill_switch: bool
-

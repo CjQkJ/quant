@@ -35,7 +35,7 @@ python scripts/replay_events.py
 
 更适合快速看懂项目现状的说明见：
 
-- [docs/runbooks/project_tour.md](E:/quant/quant-system/docs/runbooks/project_tour.md)
+- [docs/runbooks/project_tour.md](docs/runbooks/project_tour.md)
 
 ## 目录
 
@@ -59,7 +59,13 @@ quant-system/
 - 10 张核心表的 SQLAlchemy 模型与 Alembic 初始迁移
 - Binance REST/WS 客户端骨架
 - 市场数据标准化与落库服务
-- 分析、选策略、审核、paper execution、监控的结构化输出
+- 分析、选策略、策略运行信号、审核、paper execution、监控的结构化输出
 - Redis `kill switch` 与 paper 账户状态存储
 - 本地 orchestrator 全流程
-- Replay 驱动与测试样例
+- Replay 驱动、版本控制层与测试样例
+
+## 运行期文件
+
+- 默认 SQLite 演示库和脚本输出都写到 `.runtime/`
+- 仓库不再保留演示 `.db` 文件
+- 固定回放样本只放在 `tests/fixtures/`
