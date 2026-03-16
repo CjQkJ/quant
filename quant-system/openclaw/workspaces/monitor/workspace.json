@@ -1,0 +1,15 @@
+{
+  "workspace_name": "monitor",
+  "status": "active",
+  "sandbox": "read-only",
+  "tool_whitelist": [
+    "get_latest_analysis",
+    "get_strategy_signal",
+    "get_monitor_status",
+    "preview_audit_decision",
+    "run_replay_scenario"
+  ],
+  "skills": [
+    "monitor_reviewer"
+  ]
+}

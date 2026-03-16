@@ -33,6 +33,8 @@ class AuditDecisionOutput(BaseSchema):
     decision: str
     approved: bool
     risk_level: str
+    next_action: str = "none"
+    context_requirements: list[str]
     rejection_reasons: list[str]
     warnings: list[str]
     required_adjustments: list[AuditAdjustment]
@@ -70,6 +72,14 @@ class MonitorAction(BaseSchema):
     reason: str
 
 
+class SourceFreshnessStatus(BaseSchema):
+    source: str
+    age_seconds: float | None = None
+    expected_max_age_seconds: float
+    is_stale: bool
+    missing: bool = False
+
+
 class MonitorStatusOutput(BaseSchema):
     snapshot_id: str
     monitor_time: datetime
@@ -80,4 +90,6 @@ class MonitorStatusOutput(BaseSchema):
     risk_metrics: RiskMetrics
     alerts: list[MonitorAlert]
     actions: list[MonitorAction]
+    suggestions: list[MonitorAction]
+    source_freshness: list[SourceFreshnessStatus]
     kill_switch: bool

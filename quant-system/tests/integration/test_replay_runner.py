@@ -20,3 +20,5 @@ def test_replay_runner(session):
     assert len(summary.cycle_results) == len(bars)
     assert summary.analysis_version
     assert summary.risk_policy_version
+    assert summary.version_matrix.strategy_runtime_version == summary.strategy_runtime_version
+    assert summary.final_equity >= 0

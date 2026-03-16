@@ -213,6 +213,7 @@ class AccountStateService:
             used_margin=float(state.get("used_margin", 0.0)),
             realized_pnl=float(state.get("realized_pnl", 0.0)),
             unrealized_pnl=float(state.get("unrealized_pnl", 0.0)),
+            fee_paid_total=float(state.get("fee_paid_total", 0.0)),
             avg_slippage_bps=float(state.get("avg_slippage_bps", 0.0)),
             positions=positions,
             updated_at=updated_at,

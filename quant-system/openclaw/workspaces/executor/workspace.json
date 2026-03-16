@@ -1,0 +1,12 @@
+{
+  "workspace_name": "executor",
+  "status": "active",
+  "sandbox": "read-only",
+  "tool_whitelist": [
+    "get_strategy_signal",
+    "run_paper_cycle"
+  ],
+  "skills": [
+    "paper_execution_only"
+  ]
+}

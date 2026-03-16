@@ -41,7 +41,16 @@ class SelectorAgent:
         )
         if self.registry.get_by_strategy_id(session, primary.strategy_id) is None:
             raise ValueError(f"策略 {primary.strategy_id} 不存在，无法完成策略选择")
-        fallback = ranked[1].strategy_id if len(ranked) > 1 else None
+        fallback_candidate = next((item for item in ranked if item.strategy_id != primary.strategy_id), None)
+        challenger_candidate = next(
+            (
+                item
+                for item in ranked
+                if item.strategy_id != primary.strategy_id and item.strategy_type != primary.strategy_type
+            ),
+            fallback_candidate,
+        )
+        no_trade_candidate = next((item for item in ranked if item.strategy_type == "defensive"), None)
         output = StrategySelectionOutput(
             task_id=analysis.task_id,
             analysis_id=analysis.analysis_id,
@@ -53,7 +62,10 @@ class SelectorAgent:
             selected_strategy_type=primary.strategy_type,
             fit_score=primary.fit_score,
             candidate_strategies=ranked,
-            fallback_strategy_id=fallback,
+            fallback_strategy_id=fallback_candidate.strategy_id if fallback_candidate else None,
+            fallback_candidate=fallback_candidate,
+            challenger_candidate=challenger_candidate,
+            no_trade_candidate=no_trade_candidate,
             selection_reason=primary.reason,
             constraints_checked=[
                 "symbol_supported",

@@ -52,7 +52,9 @@ Binance 数据 / 演示数据
 - [apps/strategy_registry/services/registry_service.py](../../apps/strategy_registry/services/registry_service.py)
   这里定义并写入当前的 4 个预置策略。
 - [apps/strategy_runtime/services/runtime_service.py](../../apps/strategy_runtime/services/runtime_service.py)
-  这里让被选中的策略真正输出 `entry / reduce / exit / hold / no_trade`。
+  这里按 `strategy_id` 路由策略 runtime，并输出 `entry / reduce / exit / hold / no_trade`。
+- [apps/strategy_runtime/registry.py](../../apps/strategy_runtime/registry.py)
+  这里是策略运行时注册表，第三阶段开始不再用大分支逻辑硬编码所有策略。
 - [apps/risk_engine/services/audit_service.py](../../apps/risk_engine/services/audit_service.py)
   这里决定本轮是 `approve`、`reject`、`downgrade` 还是 `observe_only`。
 - [apps/execution_engine/services/order_executor.py](../../apps/execution_engine/services/order_executor.py)
@@ -63,6 +65,8 @@ Binance 数据 / 演示数据
   这是最适合看“项目现在会做什么”的演示脚本。
 - [scripts/replay_events.py](../../scripts/replay_events.py)
   这是最适合看“这套流程能不能反复跑”的回放脚本。
+- [openclaw/README.md](../../openclaw/README.md)
+  这里放着第三阶段首批 `5+1` OpenClaw workspace 模板，以及部署到 WSL OpenClaw 的脚本入口。
 
 ## 你现在最应该怎么体验
 
@@ -143,6 +147,34 @@ python scripts/demo_cycle.py --kill-switch-on
 - 执行阶段会跳过
 - 系统不会继续做 paper fill
 
+### 6. 如果你要接 WSL 里的 OpenClaw
+
+这一步分成两段，不能混在一起理解：
+
+先在 Windows 里启动或复用 `quant-system` API：
+
+```powershell
+cd E:\quant\quant-system
+python scripts\start_api_for_openclaw.py --distribution Ubuntu-24.04
+```
+
+这条命令不会进入 WSL，它只是把后端服务准备好。
+
+然后再进入 WSL：
+
+```bash
+wsl -d Ubuntu-24.04
+cd /mnt/e/quant/quant-system
+python3 scripts/deploy_openclaw_workspaces.py --openclaw-root /mnt/e/OpenClaw
+openclaw agent --agent analyst --message "你有哪些工具"
+```
+
+如果你只记一句话，就记这个：
+
+- `start_api_for_openclaw.py` 是启动后端
+- `deploy_openclaw_workspaces.py` 是接 OpenClaw
+- `openclaw agent --agent ...` 才是真正用岗位 agent
+
 ## 当前已经完成的东西
 
 - 能初始化数据库并写入 10 张核心表
@@ -155,6 +187,9 @@ python scripts/demo_cycle.py --kill-switch-on
 - 能记录任务事件日志
 - 能在监控阶段检查 kill switch
 - 能做带版本号和统计的基础回放
+- 能输出带版本矩阵、最终权益、手续费和滑点的 replay summary
+- 能通过受控工具执行层调用内部能力，并单独记录无效输入/输出事件
+- 已经补上 `anomaly_reviewer / replay_planner / tool_gap` 的后端岗位实现
 - 能通过单元测试和集成测试
 
 ## 当前还没完成的东西
@@ -163,7 +198,7 @@ python scripts/demo_cycle.py --kill-switch-on
 - 还没有多交易所、多币种支持
 - 还没有把每个服务都拆成独立 API 服务
 - 还没有前端控制台
-- 还没有真正接上 OpenClaw 的完整运行链路
+- OpenClaw workspace 已可以通过 [scripts/deploy_openclaw_workspaces.py](../../scripts/deploy_openclaw_workspaces.py) 正式部署到外部运行环境
 - 市场数据采集还更像“原型服务”，不是长期运行的生产采集器
 - 部署、告警、观测、恢复策略还需要继续补齐
 

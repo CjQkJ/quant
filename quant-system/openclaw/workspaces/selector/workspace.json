@@ -1,0 +1,13 @@
+{
+  "workspace_name": "selector",
+  "status": "active",
+  "sandbox": "read-only",
+  "tool_whitelist": [
+    "get_market_context",
+    "get_latest_analysis",
+    "get_strategy_candidates"
+  ],
+  "skills": [
+    "strategy_candidate_reader"
+  ]
+}

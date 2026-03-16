@@ -21,6 +21,8 @@ def test_orchestrator_approve_flow(session):
     assert result.strategy_signal.action in {"entry", "reduce", "exit", "hold", "no_trade"}
     assert result.audit.decision in {"approve", "downgrade"}
     assert result.execution.execution_status in {"filled", "skipped"}
+    freshness_sources = {item.source for item in result.monitor.source_freshness}
+    assert {"ohlcv", "orderbook", "derivatives_metrics", "analysis_output", "strategy_signal"} <= freshness_sources
     events = session.scalars(select(TaskEventLog)).all()
     assert len(events) >= 6
 
@@ -42,3 +44,5 @@ def test_orchestrator_observe_only_flow(session):
     orchestrator = OrchestratorService(state_store=InMemoryStateStore())
     result = orchestrator.run_cycle(session, symbol="BTCUSDT", timeframe="5m")
     assert result.audit.decision in {"observe_only", "downgrade", "reject"}
+    if result.audit.decision == "observe_only":
+        assert result.audit.next_action in {"none", "request_more_context"}

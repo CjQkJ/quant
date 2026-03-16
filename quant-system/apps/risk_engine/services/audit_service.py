@@ -13,7 +13,7 @@ from apps.risk_engine.services.strategy_applicability_service import StrategyApp
 from apps.strategy_registry.schemas.strategy import StrategySelectionOutput
 from apps.strategy_runtime.schemas.signal import StrategySignal
 from shared.config.risk_policy import get_risk_policy
-from shared.models.enums import AuditDecisionType, RiskLevel
+from shared.models.enums import AuditDecisionType, RiskLevel, WorkflowNextAction
 from shared.models.tables import AuditDecision
 from shared.utils.ids import new_audit_id
 from shared.utils.time import utc_now
@@ -38,6 +38,8 @@ class AuditService:
         analysis: AnalysisAgentOutput,
         selection: StrategySelectionOutput,
         strategy_signal: StrategySignal,
+        *,
+        persist: bool = True,
     ) -> AuditDecisionOutput:
         policy = get_risk_policy()
         warnings: list[str] = []
@@ -46,6 +48,8 @@ class AuditService:
         decision = AuditDecisionType.APPROVE
         approved = True
         risk_level = RiskLevel.MEDIUM
+        next_action = WorkflowNextAction.NONE
+        context_requirements: list[str] = []
 
         if self.kill_switch_service.is_enabled():
             rejection_reasons.append("kill_switch_enabled")
@@ -74,6 +78,15 @@ class AuditService:
             approved = False
             risk_level = RiskLevel.LOW
             warnings.append("low_confidence_or_signal_no_trade")
+            if analysis.confidence < policy.observe_confidence_lt or "stale_market_data" in analysis.risk_flags:
+                next_action = WorkflowNextAction.REQUEST_MORE_CONTEXT
+                if "stale_market_data" in analysis.risk_flags:
+                    context_requirements.append("refresh_market_context")
+                context_requirements.extend(
+                    requirement
+                    for requirement in ["check_orderbook_depth", "check_funding_and_open_interest", "refresh_strategy_signal"]
+                    if requirement not in context_requirements
+                )
         elif analysis.confidence < policy.downgrade_confidence_lt or analysis.volatility_level in policy.high_volatility_levels or strategy_signal.action == "reduce":
             decision = AuditDecisionType.DOWNGRADE
             approved = True
@@ -116,31 +129,34 @@ class AuditService:
             decision=decision,
             approved=approved,
             risk_level=risk_level,
+            next_action=next_action,
+            context_requirements=context_requirements,
             rejection_reasons=rejection_reasons,
             warnings=warnings,
             required_adjustments=adjustments,
             approved_order_plan=approved_order_plan,
             checks=checks,
-            audit_summary=f"decision={decision}, risk_level={risk_level}",
+            audit_summary=f"decision={decision}, risk_level={risk_level}, next_action={next_action}",
         )
 
-        row = AuditDecision(
-            audit_id=output.audit_id,
-            task_id=output.task_id,
-            analysis_id=output.analysis_id,
-            selection_id=output.selection_id,
-            strategy_signal_id=output.strategy_signal_id,
-            risk_policy_version=output.risk_policy_version,
-            approved=output.approved,
-            decision=output.decision,
-            risk_level=output.risk_level,
-            rejection_reasons=output.rejection_reasons,
-            warnings=output.warnings,
-            required_adjustments=[item.model_dump() for item in output.required_adjustments],
-            approved_order_plan=output.approved_order_plan,
-            raw_payload=output.model_dump(mode="json"),
-            created_by_agent="auditor_agent",
-        )
-        session.add(row)
-        session.flush()
+        if persist:
+            row = AuditDecision(
+                audit_id=output.audit_id,
+                task_id=output.task_id,
+                analysis_id=output.analysis_id,
+                selection_id=output.selection_id,
+                strategy_signal_id=output.strategy_signal_id,
+                risk_policy_version=output.risk_policy_version,
+                approved=output.approved,
+                decision=output.decision,
+                risk_level=output.risk_level,
+                rejection_reasons=output.rejection_reasons,
+                warnings=output.warnings,
+                required_adjustments=[item.model_dump() for item in output.required_adjustments],
+                approved_order_plan=output.approved_order_plan,
+                raw_payload=output.model_dump(mode="json"),
+                created_by_agent="auditor_agent",
+            )
+            session.add(row)
+            session.flush()
         return output

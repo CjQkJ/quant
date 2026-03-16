@@ -36,6 +36,11 @@ class AuditDecisionType(StringEnum):
     OBSERVE_ONLY = "observe_only"
 
 
+class WorkflowNextAction(StringEnum):
+    NONE = "none"
+    REQUEST_MORE_CONTEXT = "request_more_context"
+
+
 class OrderStatus(StringEnum):
     PENDING = "pending"
     PLACED = "placed"

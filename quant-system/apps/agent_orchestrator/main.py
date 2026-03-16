@@ -11,6 +11,7 @@ from apps.agent_orchestrator.agents.analyst_agent import AnalystAgent
 from apps.agent_orchestrator.agents.auditor_agent import AuditorAgent
 from apps.agent_orchestrator.agents.executor_agent import ExecutorAgent
 from apps.agent_orchestrator.agents.monitor_agent import MonitorAgent
+from apps.agent_orchestrator.agents.output_guard import AgentOutputGuard
 from apps.agent_orchestrator.agents.selector_agent import SelectorAgent
 from apps.agent_orchestrator.routers.execution import router as execution_router
 from apps.agent_orchestrator.routers.market_data import router as market_data_router
@@ -19,21 +20,27 @@ from apps.agent_orchestrator.routers.replay import router as replay_router
 from apps.agent_orchestrator.routers.risk import router as risk_router
 from apps.agent_orchestrator.routers.tools import router as tools_router
 from apps.agent_orchestrator.schemas.orchestration import CycleResultOutput
+from apps.agent_orchestrator.services.task_event_logger import TaskEventLogger
 from apps.agent_orchestrator.workflows.decision_to_execution import DecisionToExecutionWorkflow
 from apps.agent_orchestrator.workflows.market_to_decision import MarketToDecisionWorkflow
+from apps.analysis_engine.schemas.analysis import AnalysisAgentOutput
+from apps.execution_engine.schemas.execution import ExecutionResultOutput
 from apps.execution_engine.services.account_state_service import AccountStateService
 from apps.execution_engine.services.order_executor import OrderExecutor
 from apps.execution_engine.services.order_planner import OrderPlanner
+from apps.risk_engine.schemas.risk import AuditDecisionOutput, MonitorStatusOutput
 from apps.risk_engine.services.audit_service import AuditService
 from apps.risk_engine.services.exposure_service import ExposureService
 from apps.risk_engine.services.global_risk_service import GlobalRiskService
 from apps.risk_engine.services.kill_switch_service import KillSwitchService
 from apps.risk_engine.services.monitor_service import MonitorService
 from apps.risk_engine.services.strategy_applicability_service import StrategyApplicabilityService
+from apps.strategy_registry.schemas.strategy import StrategySelectionOutput
+from apps.strategy_runtime.schemas.signal import StrategySignal
 from apps.strategy_runtime.services.runtime_service import StrategyRuntimeService
 from shared.config.settings import get_settings
 from shared.db.session import session_scope
-from shared.models.tables import MarketOrderBookSnapshot, TaskEventLog
+from shared.models.tables import MarketOrderBookSnapshot
 from shared.utils.ids import new_task_id
 from shared.utils.state_store import InMemoryStateStore, RedisStateStore
 
@@ -55,6 +62,8 @@ class OrchestratorService:
         self.global_risk_service = GlobalRiskService(self.state_store)
         self.exposure_service = ExposureService(self.global_risk_service)
         self.account_state_service = AccountStateService(self.state_store)
+        self.event_logger = TaskEventLogger()
+        self.output_guard = AgentOutputGuard(self.event_logger)
         self.audit_service = AuditService(
             kill_switch_service=self.kill_switch_service,
             global_risk_service=self.global_risk_service,
@@ -91,25 +100,29 @@ class OrchestratorService:
         message: str,
         level: str = "info",
     ) -> None:
-        session.add(
-            TaskEventLog(
-                task_id=task_id,
-                event_type=event_type,
-                event_source=source,
-                event_payload=payload,
-                message=message,
-                level=level,
-            )
-        )
-        session.flush()
+        self.event_logger.log(session, task_id, event_type, source, payload, message, level)
 
     def run_cycle(self, session: Session, symbol: str, timeframe: str = "5m") -> CycleResultOutput:
         task_id = new_task_id()
         self._log_event(session, task_id, "market_trigger", "system", {"symbol": symbol, "timeframe": timeframe}, "市场触发")
         analysis, selection, strategy_signal, audit = self.market_to_decision.run(session, task_id=task_id, symbol=symbol, timeframe=timeframe)
+        analysis = self.output_guard.validate(session, task_id, "analyst_agent", AnalysisAgentOutput, analysis)
+        selection = self.output_guard.validate(session, task_id, "selector_agent", StrategySelectionOutput, selection)
+        strategy_signal = self.output_guard.validate(session, task_id, "strategy_runtime", StrategySignal, strategy_signal)
+        audit = self.output_guard.validate(session, task_id, "auditor_agent", AuditDecisionOutput, audit)
         self._log_event(session, task_id, "analysis_done", "analyst_agent", analysis.model_dump(mode="json"), "分析完成")
         self._log_event(session, task_id, "strategy_selected", "selector_agent", selection.model_dump(mode="json"), "策略选择完成")
         self._log_event(session, task_id, "strategy_signal_done", "strategy_runtime", strategy_signal.model_dump(mode="json"), "策略信号生成完成")
+        if audit.next_action != "none":
+            self._log_event(
+                session,
+                task_id,
+                "audit_followup_requested",
+                "auditor_agent",
+                {"next_action": audit.next_action, "context_requirements": audit.context_requirements},
+                "审核要求补充上下文",
+                level="warn",
+            )
         self._log_event(session, task_id, "audit_done", "auditor_agent", audit.model_dump(mode="json"), "审核完成")
 
         orderbook = session.scalar(
@@ -121,9 +134,11 @@ class OrchestratorService:
         if orderbook is None:
             raise ValueError("缺少订单簿快照，无法执行 orchestrator")
         execution = self.decision_to_execution.run(session, analysis=analysis, audit=audit, strategy_signal=strategy_signal, orderbook=orderbook)
+        execution = self.output_guard.validate(session, task_id, "executor_agent", ExecutionResultOutput, execution)
         self._log_event(session, task_id, "execution_done", "executor_agent", execution.model_dump(mode="json"), "执行阶段完成")
 
         monitor = self.monitor_agent.run(session, symbol=symbol)
+        monitor = self.output_guard.validate(session, task_id, "monitor_agent", MonitorStatusOutput, monitor)
         self._log_event(session, task_id, "monitor_done", "monitor_agent", monitor.model_dump(mode="json"), "监控阶段完成")
         return CycleResultOutput(
             task_id=task_id,

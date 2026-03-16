@@ -1,0 +1,16 @@
+{
+  "workspace_name": "auditor",
+  "status": "active",
+  "sandbox": "read-only",
+  "tool_whitelist": [
+    "get_market_context",
+    "get_latest_analysis",
+    "get_strategy_candidates",
+    "get_strategy_signal",
+    "preview_audit_decision",
+    "get_monitor_status"
+  ],
+  "skills": [
+    "risk_policy_reader"
+  ]
+}

@@ -45,6 +45,9 @@ class StrategySelectionOutput(BaseSchema):
     fit_score: float
     candidate_strategies: list[RankedCandidate]
     fallback_strategy_id: str | None = None
+    fallback_candidate: RankedCandidate | None = None
+    challenger_candidate: RankedCandidate | None = None
+    no_trade_candidate: RankedCandidate | None = None
     selection_reason: str
     constraints_checked: list[str]
     switch_attempted: bool = False

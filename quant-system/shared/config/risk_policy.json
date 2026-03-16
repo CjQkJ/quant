@@ -1,5 +1,5 @@
 {
-  "version": "risk-policy.v2",
+  "version": "risk-policy.v3",
   "drawdown_limit": 0.08,
   "exposure_limit": 0.30,
   "observe_confidence_lt": 0.40,

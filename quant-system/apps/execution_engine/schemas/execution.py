@@ -29,6 +29,7 @@ class PaperAccountSnapshot(BaseSchema):
     used_margin: float
     realized_pnl: float
     unrealized_pnl: float
+    fee_paid_total: float = 0.0
     avg_slippage_bps: float
     positions: list[PositionSnapshot]
     updated_at: datetime

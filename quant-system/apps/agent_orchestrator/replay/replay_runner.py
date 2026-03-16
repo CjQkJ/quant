@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections import Counter
-
 from sqlalchemy.orm import Session
 
-from apps.agent_orchestrator.schemas.orchestration import ReplayRunSummary
+from apps.agent_orchestrator.replay.replay_evaluator import ReplayEvaluator
+from apps.agent_orchestrator.schemas.orchestration import ReplayRunSummary, VersionMatrix
 from apps.market_data.schemas.market import OHLCVPayload
 from apps.market_data.services.ohlcv_service import OHLCVService
 from shared.config.risk_policy import get_risk_policy
@@ -20,6 +19,7 @@ class ReplayRunner:
     def __init__(self, orchestrator) -> None:
         self.orchestrator = orchestrator
         self.ohlcv_service = OHLCVService()
+        self.evaluator = ReplayEvaluator()
 
     def run(
         self,
@@ -31,15 +31,21 @@ class ReplayRunner:
     ) -> ReplayRunSummary:
         policy = get_risk_policy()
         run_id = new_replay_run_id()
+        version_matrix = VersionMatrix(
+            analysis_version=ANALYSIS_VERSION,
+            ranking_version=RANKING_VERSION,
+            risk_policy_version=policy.version,
+            strategy_runtime_version=STRATEGY_RUNTIME_VERSION,
+        )
         run_row = ReplayRun(
             run_id=run_id,
             symbol=symbol,
             timeframe=timeframe,
             fixture_name=fixture_name,
-            analysis_version=ANALYSIS_VERSION,
-            ranking_version=RANKING_VERSION,
-            risk_policy_version=policy.version,
-            strategy_runtime_version=STRATEGY_RUNTIME_VERSION,
+            analysis_version=version_matrix.analysis_version,
+            ranking_version=version_matrix.ranking_version,
+            risk_policy_version=version_matrix.risk_policy_version,
+            strategy_runtime_version=version_matrix.strategy_runtime_version,
             started_at=utc_now(),
             completed_at=None,
             summary_json=None,
@@ -48,13 +54,6 @@ class ReplayRunner:
         session.flush()
 
         results = []
-        selected_strategy_counter: Counter[str] = Counter()
-        decision_counter: Counter[str] = Counter()
-        switch_count = 0
-        switch_attempt_count = 0
-        cooldown_block_count = 0
-        execution_success_count = 0
-        last_selected_strategy_id: str | None = None
 
         for index, bar in enumerate(bars):
             payload = OHLCVPayload.model_validate(bar)
@@ -63,18 +62,6 @@ class ReplayRunner:
             result = self.orchestrator.run_cycle(session, symbol=symbol, timeframe=timeframe)
             session.commit()
             results.append(result)
-
-            selected_strategy_counter[result.selection.selected_strategy_id] += 1
-            decision_counter[result.audit.decision] += 1
-            if result.execution.execution_status == "filled":
-                execution_success_count += 1
-            if result.selection.switch_attempted:
-                switch_attempt_count += 1
-            if result.selection.cooldown_applied:
-                cooldown_block_count += 1
-            if last_selected_strategy_id and last_selected_strategy_id != result.selection.selected_strategy_id:
-                switch_count += 1
-            last_selected_strategy_id = result.selection.selected_strategy_id
 
             session.add(
                 ReplayCycleResult(
@@ -96,23 +83,12 @@ class ReplayRunner:
             )
             session.flush()
 
-        summary = ReplayRunSummary(
+        summary = self.evaluator.evaluate(
             run_id=run_id,
             symbol=symbol,
             timeframe=timeframe,
             fixture_name=fixture_name,
-            analysis_version=ANALYSIS_VERSION,
-            ranking_version=RANKING_VERSION,
-            risk_policy_version=policy.version,
-            strategy_runtime_version=STRATEGY_RUNTIME_VERSION,
-            cycle_count=len(results),
-            strategy_switch_count=switch_count,
-            strategy_switch_attempt_count=switch_attempt_count,
-            cooldown_block_count=cooldown_block_count,
-            execution_success_ratio=round(execution_success_count / len(results), 4) if results else 0.0,
-            decision_breakdown=dict(decision_counter),
-            selected_strategy_breakdown=dict(selected_strategy_counter),
-            account_snapshot=results[-1].account_snapshot,
+            version_matrix=version_matrix,
             cycle_results=results,
         )
         run_row.completed_at = utc_now()

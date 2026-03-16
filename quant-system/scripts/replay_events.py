@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from apps.agent_orchestrator.replay.replay_loader import ReplayLoader
+from apps.agent_orchestrator.replay.replay_reporter import ReplayReporter
 from apps.agent_orchestrator.replay.replay_runner import ReplayRunner
 from apps.strategy_registry.services.registry_service import RegistryService
 from shared.db.session import init_db, session_scope
@@ -37,8 +38,5 @@ if __name__ == "__main__":
         session.commit()
         summary = runner.run(session, bars=bars, symbol="BTCUSDT", timeframe="5m")
         session.commit()
-    print(f"回放完成，共 {summary.cycle_count} 个 bar")
-    print(f"版本: {summary.analysis_version} / {summary.ranking_version} / {summary.risk_policy_version} / {summary.strategy_runtime_version}")
-    print(f"策略切换次数: {summary.strategy_switch_count}")
-    print(f"冷却阻止次数: {summary.cooldown_block_count}")
-    print(f"执行成功率: {summary.execution_success_ratio:.2%}")
+    for line in ReplayReporter().to_console_lines(summary):
+        print(line)

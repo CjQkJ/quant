@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: install test run-api init-db seed-strategies startup-check demo-cycle replay
+.PHONY: install test run-api init-db seed-strategies startup-check demo-cycle replay deploy-openclaw
 
 install:
 	$(PYTHON) -m pip install -e .[dev]
@@ -25,3 +25,6 @@ demo-cycle:
 
 replay:
 	$(PYTHON) scripts/replay_events.py
+
+deploy-openclaw:
+	$(PYTHON) scripts/deploy_openclaw_workspaces.py

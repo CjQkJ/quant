@@ -1,0 +1,13 @@
+{
+  "workspace_name": "replay_planner",
+  "status": "active",
+  "sandbox": "read-only",
+  "tool_whitelist": [
+    "get_market_context",
+    "get_latest_analysis",
+    "run_replay_scenario"
+  ],
+  "skills": [
+    "replay_planning"
+  ]
+}

@@ -38,4 +38,15 @@ class MarketToDecisionWorkflow:
         selection = self.selector_agent.run(session, analysis=analysis)
         strategy_signal = self.strategy_runtime_service.get_strategy_signal(session, analysis=analysis, selection=selection)
         audit = self.auditor_agent.run(session, analysis=analysis, selection=selection, strategy_signal=strategy_signal)
+        if audit.next_action == "request_more_context":
+            analysis = self.analyst_agent.run(
+                session,
+                task_id=task_id,
+                symbol=symbol,
+                timeframe=timeframe,
+                force_context_refresh=True,
+            )
+            selection = self.selector_agent.run(session, analysis=analysis)
+            strategy_signal = self.strategy_runtime_service.get_strategy_signal(session, analysis=analysis, selection=selection)
+            audit = self.auditor_agent.run(session, analysis=analysis, selection=selection, strategy_signal=strategy_signal)
         return analysis, selection, strategy_signal, audit

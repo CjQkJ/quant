@@ -1,6 +1,6 @@
 # quant-system
 
-第一阶段多智能体交易闭环系统，目标是先跑通 `Binance + BTCUSDT + paper trading` 的最小可运行版本，而不是直接追求收益最大化。
+当前仓库已经从第一阶段原型推进到第三阶段骨架：先跑通 `Binance + BTCUSDT + paper trading` 的最小可运行版本，再补 replay、受控工具执行、策略运行时插件和 OpenClaw 工作区模板。
 
 ## 第一阶段边界
 
@@ -62,7 +62,10 @@ quant-system/
 - 分析、选策略、策略运行信号、审核、paper execution、监控的结构化输出
 - Redis `kill switch` 与 paper 账户状态存储
 - 本地 orchestrator 全流程
-- Replay 驱动、版本控制层与测试样例
+- Replay 驱动、版本控制层、ReplayEvaluator/ReplayReporter 与测试样例
+- `tool_registry -> schema_guard -> tool_executor` 的受控工具执行层
+- `strategy_runtime` 插件化注册表与独立策略 runtime
+- OpenClaw 首批 `5+1` workspace 模板和部署脚本，见 [openclaw/README.md](openclaw/README.md) 与 [scripts/deploy_openclaw_workspaces.py](scripts/deploy_openclaw_workspaces.py)
 
 ## 运行期文件
 
